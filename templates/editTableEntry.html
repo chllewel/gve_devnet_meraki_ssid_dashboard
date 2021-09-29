@@ -1,0 +1,160 @@
+<!-- Template page: This settings page offers various input field to gather settings information -->
+
+{% extends "masterPage.html" %}
+
+{% block content %}
+
+        
+        <!-- Left Rail -->
+        <!-- Menu element-->
+        {% include "menu.html" %}
+
+        <!-- Middle Rail -->
+        <div class="col-9 col-xl-7 col-md-6" style="display: flex;">
+            <div class="section" style="margin-left: -30%; margin-right: 10%;">
+                <div class="panel panel--loose panel--raised base-margin-bottom">
+                    <h2 class="subtitle">{{golden_ssid.name}} (Golden Configuration)</h2>
+                    <hr>
+                    <div id="tabsv3-2-content" class="tab-pane active">
+                        <div class="section">
+                            <!--CUSTOMIZE: Change table content as needed -->
+                           <div id='DefaultDiv' class="responsive-table" style="width: 100%">
+                                <table class="table table--lined table--selectable table">
+                                    <tbody>
+                                    {% for key, value in golden_ssid.items()%}
+                                    {% if value is mapping%}
+                                        {% for k, v in value.items()%}
+                                        <tr>
+                                            <th scope="row">{{key}} - {{k}}</th>
+                                            <td>{{v}}</td>
+                                        </tr>
+
+                                        {% endfor %}
+
+                                    {% else %}
+                                    <tr>
+                                        <th scope="row">{{key}}</th>
+                                        <td>{{value}}</td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" style="margin-top: 2%;">
+                <div class="panel panel--loose panel--raised base-margin-bottom">
+                    <h2 class="subtitle">{{ssid.name}}</h2>
+                    <hr>
+                    <div id="tabsv3-2-content" class="tab-pane active">
+                        <div class="section">
+                            <!--CUSTOMIZE: Change table content as needed -->
+                           <div id='SecondDiv' class="responsive-table" style="width: 100%">
+                                <table class="table table--lined table--selectable table">
+                                    <tbody>
+                                    {% for key, value in ssid.items()%}
+                                    {% if value is mapping%}
+                                        {% for k, v in value.items()%}
+                                        <tr>
+                                            <th scope="row">{{key}} - {{k}}</th>
+                                            <td>{{v}}</td>
+                                        </tr>
+
+                                        {% endfor %}
+
+                                    {% else %}
+                                    <tr>
+                                        <th scope="row">{{key}}</th>
+                                        <td>{{value}}</td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+{%  endblock %}
+
+{% block javascript %}
+
+<script>
+
+    $(document).ready(function(){
+
+
+
+        var main = $('#DefaultDiv tbody'),
+        second = $("#SecondDiv tbody");
+        console.log(main)
+        console.log(second)
+        var golden_config_dict = {}
+        var other_config_dict = {}
+
+        $('#DefaultDiv tbody > tr').each(function () {
+            golden_config_dict[$(this).find("th").text()] = $(this).find("td").text()
+        });
+
+        $('#SecondDiv tbody > tr').each(function () {
+
+            other_config_dict[$(this).find("th").text()] = $(this).find("td").text()
+
+            if (!golden_config_dict.hasOwnProperty($(this).find("th").text())) {
+                $(this).css('background-color', "rgba(255, 0 ,0, 0.4)")
+            }
+            else{
+                if (golden_config_dict[$(this).find("th").text()] !== $(this).find("td").text() ) {
+                    $(this).css('background-color', "rgba(255, 0 ,0, 0.2)")
+                }
+            }
+
+        });
+
+        $('#DefaultDiv tbody > tr').each(function () {
+            if (!other_config_dict.hasOwnProperty($(this).find("th").text())){
+                $(this).css('background-color', "rgba(0, 255 ,0, 0.4)")
+
+            }
+        });
+
+
+
+        console.log(golden_config_dict)
+        console.log(other_config_dict)
+
+
+
+        function highlightDifferences(main, another) {
+            var mainRows = main.children(),
+            anotherRows = another.children();
+            var i = 0
+            mainRows.each(function(rowNumber, mainRow) {
+              var anotherRow = anotherRows.eq(rowNumber),
+                anotherCells = anotherRow.children(),
+                mainCells = $(mainRow).children();
+                  mainCells.each(function(colNumber, cell) {
+                    var anotherCell = anotherCells.eq(colNumber)
+                    console.log(anotherCell.text())
+
+
+
+                });
+            });
+
+        }
+    })
+
+</script>
+
+{% endblock %}

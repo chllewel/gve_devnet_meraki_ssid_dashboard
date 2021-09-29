@@ -1,0 +1,1035 @@
+<!-- This table page builds a table based on jinja 2 and a passed json.
+    Each row offers an "Edit" button that redirects to a setting page for the respective entry.  -->
+    {% extends "masterPage.html" %}
+
+    {% block content %}
+    <div class="row">
+
+        <!-- Left Rail -->
+        {% include "menu.html" %}
+
+        <!-- Middle + Right Rail -->
+        <div class="col-9 col-xl-10 col-md-9">
+            <div class="section">
+                <div class="modal modal--small" style="display: none;" id="modal-submit">
+                    <div class="modal__dialog">
+                        <div class="modal__content">
+                            <div class="modal__body">
+                               <div id="loading-submit" class="col-md-12">
+                                <div class="subheader text-center">Reaching Server and Loading SSID Content....</div>
+                                <div class="loading-dots loading-dots--info" aria-label="Loading, please wait...">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-center-vertical">
+                    <h1>Enabled SSIDs</h1>
+                </div>
+                <br>
+                <div>
+                    <h3>Selected SSID:
+                        <div value="NONE" id="selected-config" style="display: inline-block; padding:0.5%; color: rgba(255, 0, 0, 1); text-shadow: 0px 0px 1px gold, 0px 0px 1px gold;" class="panel panel--loose panel--raised base-margin-bottom">NONE</div>
+                    </h3>
+
+                    <div id="select-network" class="form-group dropdown" style="display: inline-block; margin-left: 55%; position:absolute; margin-top:-2px;">
+                            <div class="form-group__text select" style="width: 250px;">
+                                <input value="Select a Network" autocomplete="off">
+                            </div>
+                            <div class="dropdown__menu" id="network-dropdown">
+                                <form>
+                                    <a>
+                                        <label class="checkbox">
+                                            <input class="network-checkbox" type="checkbox" name="All Networks" value="All Networks" autocomplete="off">
+                                            <span class="checkbox__input"></span>
+                                        </label>
+                                        <span value="All Networks">All Networks</span>
+                                    </a>
+                                {% for network, value in ssids.items() %}
+                                    <a>
+                                        <label class="checkbox">
+                                            <input class="network-checkbox" type="checkbox" name="{{network}}" value="{{network}}" autocomplete="off">
+                                            <span class="checkbox__input"></span>
+                                        </label>
+                                        <span value="{{network}}">{{network}}</span>
+                                    </a>
+                                {% endfor %}
+                                </form>
+                            </div>
+                    </div>
+
+                    <div class="form-group dropdown" id="select-ssid-name" style="display: inline-block; margin-left:75%; position: absolute; margin-top: -2px;">
+                            <div class="form-group__text select" style="width: 300px;">
+                                <input value="Select a SSID" autocomplete="off">
+                            </div>
+                            <div class="dropdown__menu">
+                                    <form>
+                                        <a>
+                                            <label class="checkbox">
+                                                <input class="ssid-checkbox" type="checkbox" name="All SSIDs" value="All SSIDs" autocomplete="off">
+                                                <span class="checkbox__input"></span>
+                                            </label>
+                                            <span class="ssid-name" name="All SSIDs" value="All SSIDs">All SSIDs</span>
+                                        </a>
+                                {% for network, value in ssids.items() %}
+                                    {% for ssid in value%}
+                                        <a>
+                                            <label class="checkbox">
+                                                <input class="ssid-checkbox" type="checkbox" name="{{network}}" value="{{ssid.name}}" autocomplete="off">
+                                                <span class="checkbox__input"></span>
+                                            </label>
+                                            <span class="ssid-name" name="{{network}}" value="{{ssid.name}}">{{ssid.name}}</span>
+                                        </a>
+                                    </form>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                    </div>
+
+                    <div id="select-configuration-details" class="form-group dropdown" style="display: inline-block; margin-left: 32%; position:absolute; margin-top:-2px;">
+                            <div id="config-dropdown" class="form-group__text select" style="width: 285px; display: none;">
+                                <input value="Select Configuration Items" autocomplete="off">
+                            </div>
+                            <div class="dropdown__menu" id="configuration-item-dropdown">
+                                <form id="conifg-item-parent">
+                                    <a name="all-config-items">
+                                        <label class="checkbox">
+                                            <input class="config-checkbox" type="checkbox" name="all-config-items" value="All Configuration Items" autocomplete="off">
+                                            <span class="checkbox__input"></span>
+                                        </label>
+                                        <span value="All Configuration Items">All Configuration Items</span>
+                                    </a>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                <div>
+
+                    <a style="display: inline-block;" name="update-config" class="btn disabled"> Update Configurations </a>
+                    <a style="display: inline-block;" name="create-config" class="btn disabled"> Create Configurations </a>
+
+                </div>
+
+                <!--Alert for error message-->
+                <!--PASS INFO: Pass the following information to the template: error=True/False ; errormessage="xxx" ; errorcode=xxx-->
+                {% include "alert.html" %}
+
+                <form action="/tablemenu" method="POST" style="margin-top: 3%;">
+
+                    <div class="responsive-table">
+                        <!--CUSTOMIZE: Change table content as needed -->
+                        <table class="table table--lined table--selectable table" id="ssid-table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <label class="checkbox" style="padding-right:10px;">
+                                                <input type="checkbox" name="select-all-checkbox" id="select-all-checkbox" value="Select SSID" autocomplete="off">
+                                                <span class="checkbox__input"></span>
+                                        </label>
+                                        <span>Select</span>
+                                    </th>
+                                    <th class="sortable">Network<span class="sort-indicator icon-dropdown"></span></th>
+                                    <th class="text-center">SSID Name</th>
+                                    <th class="text-center hidden-xs-down">Enabled</th>
+                                    <th class="hidden-md-down">Band Selection</th>
+                                    <th class="hidden-md-down">Per Client Bandwidth (Up)</th>
+                                    <th class="hidden-lg-down">Per Client Bandwidth (Down)</th>
+                                    <th class="hidden-lg-down">Visible</th>
+                                    <th class="text-center">Details</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                {% for network, value in ssids.items() %}
+                                {% for ssid in value%}
+                                <tr name="{{ssid.network_id}}:{{ssid.name}}">
+                                        <td>
+                                            <label class="checkbox">
+                                                <input type="checkbox" name="SSID" id="{{ssid.network_id}}:{{ssid.number}}" value="{{network}}: {{ssid.name}}" autocomplete="off">
+                                                <span class="checkbox__input"></span>
+                                            </label>
+                                        </td>
+                                        <td>
+
+                                            <span>{{network}}</span>
+
+                                        </td>
+                                        <td class="text-center">
+                                           <span> {{ssid.name}} </span>
+                                        </td>
+
+                                        <td class="text-center hidden-xs-down">
+                                            <span>{{ssid.enabled}}</span>
+                                        </td>
+
+                                        <td class="hidden-md-down">{{ssid.bandSelection}}</td>
+                                        <td class="hidden-md-down">{{ssid.perClientBandwidthLimitUp}}</td>
+                                        <td class="hidden-lg-down">{{ssid.perClientBandwidthLimitDown}}</td>
+                                        <td class="hidden-lg-down">{{ssid.visible}}</td>
+                                        <td class="text-center"><a value="NONE" name="details" id="{{network}}:{{ssid.number}}" href="/ssids/GOLDEN_NETWORK/GOLDEN_SSID/{{ssid.network_id}}/{{ssid.number}}/view" class="btn disabled"> View SSID </a></td>
+                                </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <!--CUSTOMIZATION END-->
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% endblock %}
+{% block javascript %}
+<script>
+
+    $(document).ready(function(){
+        var ajax_data = null;
+        var viewable_ssids = null
+        var selected_ssids = null
+        var viewable_networks = {}
+
+
+        //POPULATE DICTIONARIES FOR CHECKING AGAINST SSIDS
+        $("#modal-submit").show()
+        $.ajax({
+                    url : '{{url_for("getAllSsidsJson")}}',
+                    type : 'GET',
+                    success : function(data) {
+                        ajax_data=$.parseJSON(data)
+                    },
+                    complete: function()
+                    {
+                        if (viewable_ssids == null){
+                            viewable_ssids = {}
+                            selected_ssids = {}
+                            $.each(ajax_data, function(key, value){
+                                viewable_ssids[key] = {}
+                                selected_ssids[key] = {}
+                                viewable_networks[key] = false
+                                $(value).each(function(){
+                                    viewable_ssids[key][$(this)[0].name.trim()] = false
+                                    selected_ssids[key][$(this)[0].name.trim()] = false
+                                });
+
+                            });
+                        }
+                        $("#modal-submit").hide()
+                    },
+        });
+
+
+
+        //TABLE SELECT ALL CHECKBOX
+        $("#select-all-checkbox").click(function(){
+            if($(this).is(":checked")){
+                $('input[name="SSID"]:visible').prop("checked", true);
+            }
+            else{
+                $('input[name="SSID"]').prop("checked", false);
+            }
+
+        });
+
+        //HIGHLIGHT GOLDEN CONFIG AND SET BUTTONS
+        $("tbody > tr").click(function(event){
+            let target = $(event.target)
+
+            if ( target.is('a') ) {
+                return;
+            }
+            else if( target.hasClass('checkbox__input') || target.is("input") ){
+                return;
+            }
+            else{
+                //VARIABLES
+
+                var checkbox = $(this).find("input")[0]
+                var goldenConfig = $();
+                var goldenConfigId = $(checkbox).attr('id').split(':')
+                var goldenConfigNetwork = $(checkbox).attr('value').split(':')[0].trim()
+                var goldenConfigSSID = $(checkbox).attr('value').split(':')[1].trim()
+                goldenConfigId[1] = goldenConfigId[1].trim()
+
+
+
+                //uncheck golden config checkbox
+                $(checkbox).prop('checked', false)
+
+                //highlight golden config row
+                $('#selected-config').text($(checkbox).val())
+                $('#selected-config').attr('value', $(checkbox).attr('id'))
+                $('#selected-config').css('color', 'rgba(60, 179, 113,1)')
+                $("tbody > tr").css("background-color", "rgba(0,0,0,0)")
+                $(this).css("background-color", "rgba(255,215,0,0.7)")
+
+
+                // Show Configuration Drop Down
+                $("#config-dropdown").show()
+
+                // Uncheck the All Config Items Checkbox
+                 $('input[name="all-config-items"]').prop("checked", false)
+
+                //Remove All Rows in Drop Down
+                $("#conifg-item-parent a").each(function (){
+                    console.log($(this))
+                    if($(this)[0].name !== "all-config-items" )
+                    {
+                        $(this).remove()
+                    }
+                });
+
+                // Build Configuration Configuration Drop Down
+                $(ajax_data[goldenConfigNetwork]).each(function(){
+                    if( $(this)[0].name == goldenConfigSSID ){
+                        $.each($(this)[0], function(key, value){
+                            if (key != "number" && key != "network_id" && key != "name"){
+
+                                const text = key;
+                                const result = text.replace(/([A-Z])/g, " $1");
+                                const finalText = result.charAt(0).toUpperCase() + result.slice(1);
+
+                                $("#conifg-item-parent").append(`<a name=${key}>
+                                            <label class="checkbox">
+                                                <input class="config-checkbox" type="checkbox" name="config" value=${value} autocomplete="off">
+                                                <span class="checkbox__input"></span>
+                                            </label>
+                                            <span value=${key}>${finalText}</span>
+                                        </a>`);
+                            }
+                        });
+
+                    }
+                });
+
+
+                //enable buttons in row
+                if ($('a[name=details]').hasClass('btn disabled')) {
+                    $("a[name=details]").each(function(){
+                        $(this).addClass("btn--primary")
+                        $(this).removeClass("disabled")
+                    });
+
+                    $("a[name=update-config]").each(function(){
+                        $(this).addClass("btn--primary")
+                        $(this).removeClass("disabled")
+                    });
+                }
+
+                //build urls for buttons
+                $("a[name=create-config]").each(function(){
+                        $(this).addClass("btn--primary")
+                        $(this).removeClass("disabled")
+                    });
+                    //build URL for buttons
+                    $("a[name=details]").each(function(){
+
+                       var url_builder = $(this).attr('href').split('/')
+                       url_builder[2] = goldenConfigId[0]
+                       url_builder[3] = goldenConfigId[1]
+
+                       $(this).attr('href', url_builder.join('/'))
+
+                });
+                //Highlight Differences
+
+                $.each(ajax_data[goldenConfigNetwork], function(key, value){
+                    if(value['name']==goldenConfigSSID){
+                        goldenConfig = jQuery.extend(true, {}, $(this));
+                    };
+                });
+
+                //Compare all other configs to golden config
+                delete goldenConfig[0]['name']
+                delete goldenConfig[0]['number']
+                delete goldenConfig[0]['network_id']
+
+                jQuery.each(ajax_data, function(key, value) {
+                  jQuery.each(value, function(k, v) {
+                      var copy = jQuery.extend(true, {}, v);
+                      delete copy['name']
+                      delete copy['number']
+                      delete copy['network_id']
+
+                      var comparison =  _.isEqual(goldenConfig[0], copy)
+                      if(comparison == false){
+                        var $tbl = $('#ssid-table')
+                        var $tblbody = $tbl.find('tbody')
+
+                        var $tr = $tblbody.find('tr[name="'+v['network_id']+':'+v['name']+'"]')
+                        $tr.css('background-color', "rgba(255, 0, 0, 0.2)")
+
+                      }
+                      else{
+                        var $tbl = $('#ssid-table')
+                        var $tblbody = $tbl.find('tbody')
+                        var $tr = $tblbody.find('tr[name="'+v['network_id']+':'+v['name']+'"]')
+                        var trNetworkId = $tr.attr("name").split(":")[0].trim()
+                        var trSsidName = $tr.attr("name").split(":")[1].trim()
+
+                        if( !(trNetworkId == goldenConfigId[0].trim() && trSsidName == goldenConfigSSID) ){
+                            $tr.css('background-color', "rgba(0, 255, 0, 0.2)")
+                        }
+
+                      }
+
+                  });
+
+                });
+
+
+
+            }
+        });
+
+        $('a[name="update-config"]').click(function(){
+            console.log("clicked update config")
+            var goldenConfigNetwork = $('#selected-config').text().split(":")[0].trim()
+            var goldenConfigSSID = $('#selected-config').text().split(":")[1].trim()
+            var goldenConfigId = $('#selected-config').attr('value').split(":")[0].trim()
+            var goldenConfigSsidNumber = $('#selected-config').attr('value').split(":")[1].trim()
+            var selectedConfigs = []
+            var selected_networks = {}
+
+            console.log(goldenConfigNetwork)
+            console.log(goldenConfigSSID)
+            console.log(goldenConfigId)
+            console.log(goldenConfigSsidNumber)
+
+
+
+
+
+            $('input[name="SSID"]:checked').each(function(){
+                var ssidNetwork = $(this).attr('value').split(':')[0].trim()
+                var ssid = $(this).attr('value').split(':')[1].trim()
+
+                if( !selected_networks.hasOwnProperty(ssidNetwork) ){
+                    selected_networks[ssidNetwork] = []
+                    selected_networks[ssidNetwork].push(ssid)
+                }
+                else{
+                    selected_networks[ssidNetwork].push(ssid)
+                }
+            });
+
+            $('input[name="config"]:checked').each(function(){
+                var parent = $(this)[0].parentElement.parentElement
+                var span = $(parent)[0].children[1]
+                selectedConfigs.push($(span).attr("value"))
+            });
+
+            var send_data = {"selectedNetworks":selected_networks, "selectedConfigs":selectedConfigs}
+
+            if(selectedConfigs.length == 0){
+                alert("Please Select Configuration Items to copy to selected SSIDs. Use the Configuration Dropdown.")
+            }
+
+            if(Object.keys(selected_networks).length == 0){
+                alert("Please Select SSIDs that you would like to receive configuration changes. Use the checkboxes in the SSID Table.")
+            }
+
+            $("#modal-submit").show()
+                $.ajax({
+                    url : '/ssids/'+goldenConfigId+'/'+goldenConfigSsidNumber+'/update',
+                    type : 'POST',
+                    data: JSON.stringify(send_data),
+                    success: function (data)
+                    {
+                        if (data == "True"){
+                            location.reload()
+                        }
+                        else{
+                            $("#modal-submit").hide()
+                        }
+                    },
+                 });
+
+        });
+
+
+        //On Create Networks SSID Click
+        $('a[name="create-config"]').click(function(){
+            console.log("clicked create config")
+            var goldenConfigNetwork = $('#selected-config').text().split(":")[0].trim()
+            var goldenConfigSSID = $('#selected-config').text().split(":")[1].trim()
+            var goldenConfigId = $('#selected-config').attr('value').split(":")[0].trim()
+            var goldenConfigSsidNumber = $('#selected-config').attr('value').split(":")[1].trim()
+
+
+
+
+
+            //On Create Networks SSID Click
+            var selected_networks = []
+
+            $('.network-checkbox:checked').each(function(){
+                var ssidNetwork = $(this)[0].name
+                selected_networks.push(ssidNetwork)
+            })
+
+            if (selected_networks.length == 0){
+                alert("Please select the network(s) in which you would like to create this configuration.  Use the network drop down.")
+            }
+            else
+            {
+                    $("#modal-submit").show()
+                    $.ajax({
+                        url : '/ssids/'+goldenConfigId+'/'+goldenConfigSsidNumber+'/create',
+                        type : 'POST',
+                        data: JSON.stringify(selected_networks),
+                        success: function (data)
+                        {
+                            if (data == "True"){
+                                location.reload()
+                            }
+                            else{
+                                $("#modal-submit").hide()
+                            }
+                        },
+                     });
+            }
+        });
+
+        //This function is not the same as the above, it is for dynamic elements specifically
+        $(".dropdown__menu").on("click", "a", function(e){
+             var $clicked_item_checkbox = $(this)[0].children[0].childNodes[1]
+             var $configItem = $clicked_item_checkbox.parentNode.parentNode.name
+             //toggle checkbox
+             var all_items = $("#conifg-item-parent")[0].childNodes
+
+
+             if ($configItem == "psk"){
+                //check authMode
+                //encryptionMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode" || configKey == "encryptionMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "oauth"){
+                //check splashPage
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "splashPage"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+
+                    }
+                });
+
+             }
+
+             if ($configItem == "localRadius"){
+                //check authMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+
+                    }
+                });
+
+             }
+
+             if ($configItem == "ldap"){
+                //check splashPage
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "splashPage"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+
+                    }
+                });
+
+             }
+
+             if ($configItem == "activeDirectory"){
+                //check splashPage
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "splashPage"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "radiusServers"){
+                //check authMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "radiusAccountingEnabled"){
+                //check authMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "radiusAccountingServers"){
+                //check radiusAccountingEnabled
+                //check authMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode" || configKey == "radiusAccountingEnabled"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "useVlanTagging"){
+                //check ipAssignmentMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "ipAssignmentMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "vlanId"){
+                //check ipAssignmentMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "ipAssignmentMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "defaultVlanId"){
+                //check ipAssignmentMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "ipAssignmentMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "apTagsAndVlanIds"){
+                //check ipAssignmentMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "ipAssignmentMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "radiusGuestVlanEnabled"){
+                //check authMode
+                //check addressingMode
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode" || configKey == "addressingMode"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+             if ($configItem == "radiusGuestVlanId"){
+                //check authMode
+                //check addressingMode
+                //check radiusGuestVlanEnabled
+                $(all_items).each(function(){
+                    var configKey = $(this)[0].name
+                    if (configKey == "authMode" || configKey == "addressingMode" || configKey == "radiusGuestVlanEnabled"){
+                        var checkbox = $(this)[0].children[0].children[0]
+                        $(checkbox).prop("checked", true)
+                    }
+                });
+
+             }
+
+
+
+
+
+
+
+        });
+
+        //Configuration Drop down
+        $('input[name="all-config-items"]').click(function(){
+            var isAllChecked = $(this)[0].checked
+            if (isAllChecked) {
+                $("#select-configuration-details .config-checkbox").prop("checked", true)
+            }
+            else{
+                $("#select-configuration-details .config-checkbox").prop("checked", false)
+            }
+
+        });
+
+
+
+        $(".network-checkbox").click(function(event){
+            //uncheck all SSIDs in table
+            console.log("clicked")
+            var isChecked = $(this)[0].checked
+            $("#select-all-checkbox").prop("checked", false);
+            $('input[name="SSID"]').prop("checked", false);
+
+
+
+            var selected_network = $(this)[0].name
+
+
+            if (selected_network !== "All Networks" && !isChecked){
+                $('input[name="All Networks"]').prop("checked", false)
+            }
+
+
+            //Traverse Table and Hide elements of non-selected network
+
+            $(".network-checkbox").each(function(){
+                var network_checkbox = $(this)[0].name.trim()
+                var network_checkbox_checked = $(this)[0].checked
+
+                if ($(this)[0].checked) {
+                    viewable_networks[$(this)[0].name] = true
+                }
+                else{
+                    viewable_networks[$(this)[0].name] = false
+                }
+
+                $(".ssid-checkbox").each(function(){
+                    var ssid_item = $(this)[0].parentElement.parentElement
+                    var ssid_span = $(ssid_item)[0].children[1]
+                    var ssid_network = $(ssid_span).attr("name").trim()
+                    var ssid_value = $(ssid_span).attr("value").trim()
+
+
+                    if (selected_network == "All Networks"){
+                        ssid_item = $(this)[0].parentElement.parentElement
+                        $.each(viewable_ssids, function(network, value){
+                            $.each(value, function(ssid, v){
+                                if(isChecked){
+                                    viewable_ssids[network][ssid.trim()] = true //set all ssid items to unchecked in dictionary
+                                }
+                                else{
+                                    viewable_ssids[network][ssid.trim()] = false //set all ssid items to unchecked in dictionary
+                                }
+
+                            })
+
+                        })
+                        $(ssid_item).show() //show all ssid items
+                    }
+                    else {
+                        if (network_checkbox_checked){
+                            //If network checkbox is checked
+
+                            // if the ssid is in the network_boxes domain
+                            if(ssid_value == "All SSIDs") {
+                                $(this).prop("checked", false)  //keep same as above value
+                            }
+                            else if(ssid_network == network_checkbox){
+                                viewable_ssids[ssid_network][ssid_value] = true
+
+                                selected_ssids[ssid_network][ssid_value] = false //make each selected_ssid false
+                                $(this).prop("checked", false)  //keep same as above value
+
+                                $(ssid_item).show()
+                            }
+                        }
+                        else{
+                            //If network checkbox is not checked
+                            if(ssid_value == "All SSIDs") {
+                                $(this).prop("checked", false)  //keep same as above value
+                            }
+                            // if the ssid is in the network_boxes domain
+                            if(ssid_network == network_checkbox){
+                                viewable_ssids[ssid_network][ssid_value] = false
+
+
+                                selected_ssids[ssid_network][ssid_value] = false //make each selected_ssid false
+                                $(this).prop("checked", false)  //keep same as above value
+
+                                $(ssid_item).hide()
+                            }
+                        }
+                    }
+                });
+
+            });
+
+            if(selected_network == "All Networks"){
+                if( $(this)[0].checked ) {
+                    $.each(viewable_networks, function(network, value){
+                        viewable_networks[network] =  true
+                    });
+                    $(".network-checkbox").prop('checked', true)
+                    $('.ssid-checkbox').prop('checked', true) // Check ALL SSIDS
+                    $.each(selected_ssids, function(network, ssid){
+                        $.each(ssid, function(ssid_name, ssid_values){
+                            selected_ssids[network][ssid_name] = true
+                        });
+                    });
+                }
+                else{
+                    $.each(viewable_networks, function(network, value){
+                        viewable_networks[network] =  false
+                    });
+                    $(".network-checkbox").prop('checked', false)
+                    $('.ssid-checkbox').prop('checked', false) // UnCheck ALL SSIDS
+                    $.each(selected_ssids, function(network, ssid){
+                        $.each(ssid, function(ssid_name, ssid_values){
+                            selected_ssids[network][ssid_name] = false
+                        });
+                    });
+                }
+
+
+            }
+
+
+        });
+
+
+        $(".ssid-checkbox").click(function(){
+            var checked = $(this)[0].checked
+            var ssid_item = $(this)[0].parentElement.parentElement
+            var ssid_span = $(ssid_item)[0].children[1]
+            var network = $(ssid_span).attr("name").trim()
+            var ssid = $(ssid_span).attr("value").trim()
+
+            if (network !== "All SSIDs" && !checked){
+                $('input[name="All SSIDs"]').prop("checked", false)
+            }
+
+            if (network == "All SSIDs"){
+
+
+                if(checked){
+                    $(".network-checkbox").prop("checked", true)
+                    $.each(viewable_networks, function(network, value){
+                        viewable_networks[network] =  true
+                    });
+
+                    $(".ssid-checkbox").each(function(){
+                        var ssid_item = $(this)[0].parentElement.parentElement
+                        $(ssid_item).show()
+                    }) //show all checkboxes
+
+                    $.each(selected_ssids, function(network, value){
+                        $.each(value, function(ssid, v){
+                            selected_ssids[network][ssid.trim()] = true
+                        })
+                    })
+                    $(".ssid-checkbox").prop('checked', true)
+                }
+                else{
+                    $(".network-checkbox").prop("checked", false)
+                    $.each(viewable_networks, function(network, value){
+                        viewable_networks[network] =  false
+                    });
+
+                    $(".ssid-checkbox").prop('checked', false)
+                    $.each(selected_ssids, function(network, value){
+                        $.each(value, function(ssid, v){
+                            selected_ssids[network][ssid.trim()] = false
+                        })
+                    })
+                }
+            }
+            else if( ajax_data.hasOwnProperty(network)){
+                $(ajax_data[network]).each(function(){
+                    if ($(this)[0].name == ssid){
+
+                        if (checked){
+                            selected_ssids[network][ssid.trim()] = true
+                            $('.ssid-checkbox[name="All SSIDs"]').prop('checked', false)
+                        }
+                        else{
+                            selected_ssids[network][ssid.trim()] = false
+                        }
+                    }
+                });
+            }
+
+        });
+
+
+        //SHOW TABLE ROWS BASED ON NETWORK DROPDOWN
+        $(".network-checkbox").click(function(){
+            $("tbody > tr").each(function(){
+                var table_network = $(this)[0].cells[1].innerText.trim()
+                var table_ssid = $(this)[0].cells[2].innerText.trim()
+                var table_row = $(this)
+
+                if(!viewable_networks[table_network]){
+                    //Hide Row if network is not viewable based on network dropdown
+                    $(this).hide()
+                }
+                else{
+                    //Show Row if network is viewable based on network dropdown
+                    $(this).show()
+                }
+
+            })
+        });
+
+
+        //SHOW TABLE ROWS BASED ON SSID DROPDOWN
+
+        $(".ssid-checkbox").click(function(){
+            //BELOW FUNCTION IS SHORTCUT TO SHOW ALL SSIDS WITH SAME NAME - PROBABLY BUGGY (DELETING THIS WILL ALLOW SINGLE NETWORK SELECTION)
+            var ssid_item = $(this)[0].parentElement.parentElement
+            var ssid_span = $(ssid_item)[0].children[1]
+            var network_clicked = $(ssid_span).attr("name").trim()
+            var ssid_clicked = $(ssid_span).attr("value").trim()
+
+
+            if ($(this)[0].checked){
+                $.each(selected_ssids, function(network, ssid_list){
+                    $.each(ssid_list, function(ssid_name, value){
+                        if (ssid_clicked == ssid_name){
+                            selected_ssids[network][ssid_name] = true
+                        }
+
+                    });
+
+                });
+            }
+            else{
+
+                 $.each(selected_ssids, function(network, ssid_list){
+                    $.each(ssid_list, function(ssid_name, value){
+                        if (ssid_clicked == ssid_name){
+                            selected_ssids[network][ssid_name] = false
+                        }
+
+                    });
+
+                });
+
+            }
+
+            //DO NOT DELETE BELOW THIS LINE
+            $("tbody > tr").each(function(){
+                var table_network = $(this)[0].cells[1].innerText.trim()
+                var table_ssid = $(this)[0].cells[2].innerText.trim()
+                var table_row = $(this)
+
+                if( !selected_ssids[table_network][table_ssid]){
+                    //Hide Row if ssid is not viewable based on network dropdown
+                    $(this).hide()
+
+                }
+                else{
+                    //Hide Row if ssid is not viewable based on network dropdown
+                    $(this).show()
+                }
+
+            })
+        });
+
+
+        //Do not show duplicate SSID names in SSID Dropdown on network-box click
+        $(".network-checkbox").click(function(){
+            $(".ssid-checkbox").show()
+            var unique_ssids = {}
+            $(".ssid-checkbox:visible").each(function(){
+                var ssid_item = $(this)[0].parentElement.parentElement
+                var ssid_span = $(ssid_item)[0].children[1]
+                var network_clicked = $(ssid_span).attr("name").trim()
+                var ssid_clicked = $(ssid_span).attr("value").trim()
+
+                if(!unique_ssids.hasOwnProperty(ssid_clicked)){
+                    unique_ssids[ssid_clicked] = true
+                    $(ssid_item).show()
+                }
+                else{
+                    $(ssid_item).hide()
+                }
+            });
+        });
+
+        ////Do not show duplicate SSID names in SSID Dropdown on all-ssid checkbox click
+        $('.ssid-checkbox[name="All SSIDs"]').click(function(){
+            $(".ssid-checkbox").show()
+            var unique_ssids = {}
+            $(".ssid-checkbox:visible").each(function(){
+                var ssid_item = $(this)[0].parentElement.parentElement
+                var ssid_span = $(ssid_item)[0].children[1]
+                var network_clicked = $(ssid_span).attr("name").trim()
+                var ssid_clicked = $(ssid_span).attr("value").trim()
+
+                if(!unique_ssids.hasOwnProperty(ssid_clicked)){
+                    unique_ssids[ssid_clicked] = true
+                    $(ssid_item).show()
+                }
+                else{
+                    $(ssid_item).hide()
+                }
+            });
+        });
+
+        //Do not show duplicate SSID names in SSID Dropdown on SSID Dropdown click
+        $("#select-ssid-name").click(function(){
+            $(".ssid-checkbox").show()
+            var unique_ssids = {}
+            $(".ssid-checkbox:visible").each(function(){
+                var ssid_item = $(this)[0].parentElement.parentElement
+                var ssid_span = $(ssid_item)[0].children[1]
+                var network_clicked = $(ssid_span).attr("name").trim()
+                var ssid_clicked = $(ssid_span).attr("value").trim()
+
+                if(!unique_ssids.hasOwnProperty(ssid_clicked)){
+                    unique_ssids[ssid_clicked] = true
+                    $(ssid_item).show()
+                }
+                else{
+                    $(ssid_item).hide()
+                }
+            });
+        });
+    });
+
+
+
+</script>
+{% endblock %}
