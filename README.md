@@ -16,7 +16,7 @@ Compares, updates, and creates Meraki SSID Configurations based on a selected 'G
 Running Podman/Docker container was tested on CentOS/RHEL8 - (optional: replace podman commands with docker).
 
 ```
-git clone https://wwwin-github.cisco.com/gve/GVE_DevNet_Meraki_SSID_Golden_Config.git
+git clone https://github.com/gve-sw/gve_devnet_meraki_ssid_dashboard.git
 
 cd GVE_DevNet_Meraki_SSID_Golden_Config
 
